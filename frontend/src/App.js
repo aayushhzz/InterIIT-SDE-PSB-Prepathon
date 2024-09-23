@@ -18,7 +18,7 @@ function App() {
             className="background-video"
             width={"100%"}
           >
-            <source src="https://www.youtube.com/watch?v=SDxmkJwrbno&ab_channel=KarenHovsepyan" type="video/mp4" />
+            <source src="./public/galaxyrotatingmerged.mp4" type="video/mp4" />
           </video>
         </div>
         
