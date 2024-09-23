@@ -10,7 +10,7 @@ function App() {
     <Router>
       <div className="App">
         <div className="video-background">
-          <video
+          {/* <video
             autoPlay
             loop
             muted
@@ -19,7 +19,7 @@ function App() {
             width={"100%"}
           >
             <source src="./public/galaxyrotatingmerged.mp4" type="video/mp4" />
-          </video>
+          </video> */}
         </div>
         
         <Routes>
