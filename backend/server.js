@@ -1,104 +1,134 @@
-// server.js
 const express = require('express');
 const mongoose = require('mongoose');
-const session = require('express-session');
-const passport = require('passport');
+const User =  require('./models/User.js');
+const cors = require('cors');
 require('dotenv').config();
+const crypto = require("node:crypto");
+const { 
+    generateRegistrationOptions, 
+    verifyRegistrationResponse, 
+    generateAuthenticationOptions, 
+    verifyAuthenticationResponse 
+} = require('@simplewebauthn/server')
+
+const connectDB = require('./db.js');
+
+if (!globalThis.crypto) {
+    globalThis.crypto = crypto;
+}
+
+connectDB();
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Session management
-app.use(session({
-  secret: 'yourSecretKey',
-  resave: false,
-  saveUninitialized: true,
-}));
-
-// Passport middleware
-app.use(passport.initialize());
-app.use(passport.session());
-
-// MongoDB connection
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => console.log('MongoDB connected'));
-
-// Import routes
-app.use('/auth', require('./routes/auth'));
-
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(process.env.PORT || 4998, () => {
+  console.log(`Server is running on port ${process.env.PORT || 4998}`);
+});
 
 
-// Enable 2FA
-router.post('/2fa/setup', async (req, res) => {
-    const user = await User.findById(req.user.id);
-    if (user.twoFactorEnabled) {
-      return res.status(400).json({ msg: '2FA is already enabled.' });
-    }
-    
-    const secret = speakeasy.generateSecret({ length: 20 });
-    user.twoFactorSecret = secret.base32;
-    await user.save();
-  
-    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
-    res.json({ qrCodeUrl, secret: secret.base32 });
-  });
-  
-  // Verify 2FA
-  router.post('/2fa/verify', async (req, res) => {
-    const user = await User.findById(req.user.id);
-    const { token } = req.body;
-  
-    const verified = speakeasy.totp.verify({
-      secret: user.twoFactorSecret,
-      encoding: 'base32',
-      token,
-    });
-  
-    if (verified) {
-      user.twoFactorEnabled = true;
-      await user.save();
-      res.status(200).json({ msg: '2FA enabled successfully' });
-    } else {
-      res.status(400).json({ msg: 'Invalid token' });
-    }
-  });
+app.post('/register',async (req, res) => {
+  const { username, email ,password } = req.body
+  if(await User.findOne({username: username})){
+    return res.status(400).json({error: 'User already exists'});
+  }
+  if(await User.findOne({email: email})){
+    return res.status(400).json({error: 'Email already exists'});
+  }
+  const user = {
+      username,
+      email,
+      password
 
-  
-  // Update Password
-router.post('/password/update', async (req, res) => {
-    const user = await User.findById(req.user.id);
-    const { newPassword } = req.body;
-  
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-    await user.save();
-  
-    res.status(200).json({ msg: 'Password updated successfully' });
-  });
+  }
+  let created = false;
+  const usr = await User.create(user);
+  if(usr){
+    created = true;
+  }
+  else{
+    res.status(400).json({error: 'User not created'});
+  }
+  return res.json({ username , created});
 
+})
+
+app.post('/register-challenge', async (req, res) => {
+  const { userId } = req.body
+
+  if (!userStore[userId]) return res.status(404).json({ error: 'user not found!' })
+
+  const user = userStore[userId]
+
+  const challengePayload = await generateRegistrationOptions({
+      rpID: 'localhost',
+      rpName: 'My Localhost Machine',
+      attestationType: 'none',
+      userName: user.username,
+      timeout: 30_000,
+  })
+
+  challengeStore[userId] = challengePayload.challenge
+
+  return res.json({ options: challengePayload })
+
+})
+
+app.post('/register-verify', async (req, res) => {
+  const { userId, cred }  = req.body
   
-  // Password Recovery (send email)
-router.post('/password/recovery', async (req, res) => {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
-    
-    if (!user) {
-      return res.status(400).json({ msg: 'User not found' });
-    }
+  if (!userStore[userId]) return res.status(404).json({ error: 'user not found!' })
+
+  const user = userStore[userId]
+  const challenge = challengeStore[userId]
+
+  const verificationResult = await verifyRegistrationResponse({
+      expectedChallenge: challenge,
+      expectedOrigin: process.env.SERVER_URL,
+      expectedRPID: 'localhost',
+      response: cred,
+  })
+
+  if (!verificationResult.verified) return res.json({ error: 'could not verify' });
+  userStore[userId].passkey = verificationResult.registrationInfo
+
+  return res.json({ verified: true })
+
+})
+
+app.post('/login-challenge', async (req, res) => {
+  const { userId } = req.body
+  if (!userStore[userId]) return res.status(404).json({ error: 'user not found!' })
   
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    const resetLink = `http://localhost:3000/password/reset/${token}`;
-    
-    // Send email (using nodemailer)
-    // Assuming you have a function sendEmail to handle this
-    sendEmail(user.email, 'Password Reset', `Click this link to reset your password: ${resetLink}`);
-    
-    res.json({ msg: 'Password reset email sent' });
-  });
+  const opts = await generateAuthenticationOptions({
+      rpID: 'localhost',
+  })
+
+  challengeStore[userId] = opts.challenge
+
+  return res.json({ options: opts })
+})
+
+
+app.post('/login-verify', async (req, res) => {
+  const { userId, cred }  = req.body
+
+  if (!userStore[userId]) return res.status(404).json({ error: 'user not found!' })
+  const user = userStore[userId]
+  const challenge = challengeStore[userId]
+
+  const result = await verifyAuthenticationResponse({
+      expectedChallenge: challenge,
+      expectedOrigin: process.env.SERVER_URL,
+      expectedRPID: 'localhost',
+      response: cred,
+      authenticator: user.passkey
+  })
+
+  if (!result.verified) return res.json({ error: 'something went wrong' })
   
+  // Login the user: Session, Cookies, JWT
+  return res.json({ success: true, userId })
+})
