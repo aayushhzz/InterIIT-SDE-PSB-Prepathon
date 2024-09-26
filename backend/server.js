@@ -12,6 +12,10 @@ const {
 } = require('@simplewebauthn/server')
 
 const connectDB = require('./db.js');
+const speakeasy = require('speakeasy');
+const qrcode = require('qrcode');
+
+
 
 if (!globalThis.crypto) {
     globalThis.crypto = crypto;
@@ -60,7 +64,7 @@ app.post('/register-challenge', async (req, res) => {
 
   if (!userStore[userId]) return res.status(404).json({ error: 'user not found!' })
 
-  const user = userStore[userId]
+  // const user = userStore[userId]
 
   const challengePayload = await generateRegistrationOptions({
       rpID: 'localhost',
@@ -81,8 +85,8 @@ app.post('/register-verify', async (req, res) => {
   
   if (!userStore[userId]) return res.status(404).json({ error: 'user not found!' })
 
-  const user = userStore[userId]
-  const challenge = challengeStore[userId]
+  // const user = userStore[userId]
+  // const challenge = challengeStore[userId]
 
   const verificationResult = await verifyRegistrationResponse({
       expectedChallenge: challenge,
@@ -92,7 +96,7 @@ app.post('/register-verify', async (req, res) => {
   })
 
   if (!verificationResult.verified) return res.json({ error: 'could not verify' });
-  userStore[userId].passkey = verificationResult.registrationInfo
+  // userStore[userId].passkey = verificationResult.registrationInfo
 
   return res.json({ verified: true })
 
@@ -110,7 +114,6 @@ app.post('/login-challenge', async (req, res) => {
 
   return res.json({ options: opts })
 })
-
 
 app.post('/login-verify', async (req, res) => {
   const { userId, cred }  = req.body
@@ -132,3 +135,62 @@ app.post('/login-verify', async (req, res) => {
   // Login the user: Session, Cookies, JWT
   return res.json({ success: true, userId })
 })
+
+//authenticator app 2fa
+app.post('/getQR',async (req, res) => {
+  const { username } = req.body;
+  const user = await User.findOne({username: username});
+  if(!user){
+    return res.status(400).json({error: 'User not found'});
+  }
+  const secret = await speakeasy.generateSecret(
+    {name:`${username} Inter-IIT SDE`}
+  );
+  const image = await qrcode.toDataURL(secret.otpauth_url);
+  user.tempsecret = secret.ascii;
+  await user.save();
+  return res.json({ image,success: true });
+});
+//verify otp at register
+app.post('/registerVerifyOTP',async (req, res) => {
+  const { username, otp } = req.body;
+  const user = await User.findOne({username});
+  if(!user){
+    return res.status(400).json({error: 'User not found'});
+  }
+  const verified = speakeasy.totp.verify({
+    secret: user.tempsecret,
+    encoding: 'ascii',
+    token: otp
+  });
+  if(verified){
+    user.secret = user.tempsecret;
+    user.tempsecret = undefined;
+    await user.save();
+    return res.json({ success: true });
+  }
+  return res.status(400).json({error: 'Invalid OTP'});
+});
+//verify otp at login
+app.post('/loginVerifyOTP',async (req, res) => {
+  const { username, otp } = req.body;
+  const user = await User.findOne({username});
+  if(!user){
+    return res.status(400).json({error: 'User not found'});
+  }
+  if(!user.secret){
+    return res.status(400).json({error: 'Enable 2FA!!'});
+  }
+  const verified = speakeasy.totp.verify({
+    secret: user.secret,
+    encoding: 'ascii',
+    token: otp
+  });
+  if(verified){
+    user.secret = user.tempsecret;
+    user.tempsecret = undefined;
+    await user.save();
+    return res.json({ success: true });
+  }
+  return res.status(400).json({error: 'Invalid OTP'});
+});

@@ -12,7 +12,19 @@ const UserSchema = new mongoose.Schema({
     password: { 
         type: String,
         required: true
-    }
+    },
+    twoFAEnabled: {
+        type: Boolean,
+        default: false
+    },
+    tempsecret: {
+        type: String,
+        required: false
+    },
+    secret: {
+        type: String,
+        required: false
+    },
 });
 
 module.exports = mongoose.model('User', UserSchema);

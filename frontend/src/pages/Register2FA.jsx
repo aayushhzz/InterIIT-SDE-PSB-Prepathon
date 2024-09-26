@@ -1,97 +1,74 @@
-import React,{useState} from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import GlassCard from "../components/GlassCard";
+import axios from "axios";
 
 const Register2FA = () => {
+    const Navigate = useNavigate();
   const [authMethod, setAuthMethod] = useState(""); // Track chosen authentication method
-  const [email, setEmail] = useState(""); // User email for OTP
-  const [otp, setOtp] = useState(""); // OTP entered by the user
-  const [otpSent, setOtpSent] = useState(false); // Whether the OTP has been sent
-  const [authError, setAuthError] = useState(""); // To store any errors
-  const [passkeySuccess, setPasskeySuccess] = useState(false); // Whether passkey was successful
+  const [image, setImage] = useState(null);
+    const [otp, setOTP] = useState('');
 
-  // Handles selection of authentication method
-  const selectAuthMethod = (method) => {
-    setAuthMethod(method);
-    setAuthError("");
-    setOtpSent(false);
-    setPasskeySuccess(false);
-  };
-
-  // Handles sending OTP (Email 2FA)
-  const sendOTP = async () => {
-    if (email) {
-      setOtpSent(true);
-      setAuthError("");
-    } else {
-      setAuthError("Please provide a valid email address");
+  const setUpMethod = async (method) => {
+    if (method === "authenticator") {
+      let username = await localStorage.getItem("username");
+      const response = await axios.post("http://localhost:4999/getQR", {
+        username: username ,
+      });
+      setImage(response.data.image);
+    }
+    if (method === "passkey") {
+      // Mocked for demonstration, replace with actual API call
+      console.log("Setting up Passkey...");
     }
   };
-
-  // Handles OTP verification
+  const selectAuthMethod = (method) => {
+    setAuthMethod(method);
+    setUpMethod(method);
+  };
   const verifyOTP = async () => {
+    const username = await localStorage.getItem("username");
+    const response = await axios.post("http://localhost:4999/registerVerifyOTP", {
+      username,
+      otp,
+    });
+    if (response.data.success) {
+      Navigate("/login");
+    }
+  };
+  const setupPasskey = async () => {
+    console.log("Setting up passkey...");
     // Mocked for demonstration, replace with actual API call
   };
-
-  // Handles Passkey Authentication (WebAuthn)
-  const handlePasskeyAuth = async () => {
-    // Mocked for demonstration, replace with actual API call
-  };
-
   return (
     <Container>
       <div className="auth-container">
         <GlassCard>
-          <h1>Two Factor Authentication</h1>
-          {/* Choose between Email OTP and Passkey */}
+          <h1>Setup/Update Two Factor Authentication</h1>
           <div className="auth-options">
-            <StyledButton onClick={() => selectAuthMethod("email")}>
-              Authenticate with Authenticator App
+            <StyledButton onClick={() => selectAuthMethod("authenticator")}>
+              Use Authenticator App
             </StyledButton>
             <StyledButton onClick={() => selectAuthMethod("passkey")}>
-              Authenticate with Passkey
+              Use Passkey
             </StyledButton>
           </div>
 
-          {authMethod === "email" && (
-            <div className="email-auth">
+          {authMethod === "authenticator" && image && (
+            <div className="authenticator-auth">
               <h2>Authenticator App</h2>
-              {!otpSent ? (
-                <>
-                  <StyledInput
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                  <StyledButton onClick={sendOTP}>Setup Authenticator</StyledButton>
-                </>
-              ) : (
-                <>
-                  <StyledInput
-                    type="text"
-                    placeholder="Enter OTP"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                  />
-                  <StyledButton onClick={verifyOTP}>Verify OTP</StyledButton>
-                </>
-              )}
+              <img src={image} alt="qr code" height={"100px"} width={"100px"} />
+              <p>Scan this QR Code</p>
+              <StyledInput type="text" placeholder="Enter OTP" value={otp} onChange={(e)=> setOTP(e.target.value)}/>
+              <StyledButton onClick={verifyOTP}>Verify OTP</StyledButton>
             </div>
           )}
-
           {authMethod === "passkey" && (
             <div className="passkey-auth">
               <h2>Passkey Authentication</h2>
-              <StyledButton onClick={handlePasskeyAuth}>
-                Authenticate with Passkey
-              </StyledButton>
+              <StyledButton onClick={setupPasskey}>Setup Passkey</StyledButton>
             </div>
-          )}
-
-          {authError && <ErrorMessage>{authError}</ErrorMessage>}
-          {passkeySuccess && (
-            <SuccessMessage>Passkey authentication successful!</SuccessMessage>
           )}
         </GlassCard>
       </div>
@@ -110,6 +87,15 @@ const Container = styled.div`
     height: 100%;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .auth-options {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
   }
 `;
 
@@ -122,7 +108,7 @@ const StyledButton = styled.button`
   font-size: 16px;
   cursor: pointer;
   transition: background-color 0.3s ease;
-
+  width: 60%;
   &:hover {
     background-color: #444;
   }
@@ -140,16 +126,6 @@ const StyledInput = styled.input`
   border-radius: 5px;
   border: 1px solid #ccc;
   font-size: 16px;
-`;
-
-const ErrorMessage = styled.p`
-  color: red;
-  margin-top: 10px;
-`;
-
-const SuccessMessage = styled.p`
-  color: green;
-  margin-top: 10px;
 `;
 
 export default Register2FA;

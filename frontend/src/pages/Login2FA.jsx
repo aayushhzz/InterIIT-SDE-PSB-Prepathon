@@ -1,94 +1,56 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import GlassCard from '../components/GlassCard';
-
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 const Login2FA = () => {
-  const [authMethod, setAuthMethod] = useState(''); // Track chosen authentication method
-  const [email, setEmail] = useState('');           // User email for OTP
-  const [otp, setOtp] = useState('');               // OTP entered by the user
-  const [otpSent, setOtpSent] = useState(false);    // Whether the OTP has been sent
-  const [authError, setAuthError] = useState('');   // To store any errors
-  const [passkeySuccess, setPasskeySuccess] = useState(false); // Whether passkey was successful
+  const Navigate = useNavigate();
+    const [authMethod, setAuthMethod] = useState(''); // Track chosen authentication method
+    const [otp, setOTP] = useState('');
 
-  // Handles selection of authentication method
-  const selectAuthMethod = (method) => {
-    setAuthMethod(method);
-    setAuthError('');
-    setOtpSent(false);
-    setPasskeySuccess(false);
-  };
-
-  // Handles sending OTP (Email 2FA)
-  const sendOTP = async () => {
-    if (email) {
-      setOtpSent(true);
-      setAuthError('');
-    } else {
-      setAuthError('Please provide a valid email address');
+    const selectAuthMethod = (method) => {
+        setAuthMethod(method);
     }
-  };
-
-  // Handles OTP verification
-  const verifyOTP = async () => {
-    // Mocked for demonstration, replace with actual API call
-  };
-
-  // Handles Passkey Authentication (WebAuthn)
-  const handlePasskeyAuth = async () => {
-    // Mocked for demonstration, replace with actual API call
-  };
-
+    const verifyPasskey = async () => {
+        console.log("Verifying passkey...");
+        // Mocked for demonstration, replace with actual API call
+    }
+    const verifyAutheticatorOTP = async () => {
+        const username = await localStorage.getItem('username');
+        const response = await axios.post('http://localhost:4999/loginVerifyOTP', {
+            username,
+            otp
+        });
+        if(response.data.success){
+            Navigate('/');
+        }
+    }
   return (
     <Container>
       <div className="auth-container">
         <GlassCard>
           <h1>Two Factor Authentication</h1>
-          {/* Choose between Email OTP and Passkey */}
           <div className="auth-options">
-            <StyledButton onClick={() => selectAuthMethod('email')}>
+            <StyledButton onClick={() => selectAuthMethod('authenticator')}>
             Authenticate with Authenticator App
             </StyledButton>
             <StyledButton onClick={() => selectAuthMethod('passkey')}>
               Authenticate with Passkey
             </StyledButton>
           </div>
-
-          {authMethod === 'email' && (
-            <div className="email-auth">
-              <h2>Authenticator App</h2>
-              {!otpSent ? (
-                <>
-                  <StyledInput
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                  <StyledButton onClick={sendOTP}>Send OTP</StyledButton>
-                </>
-              ) : (
-                <>
-                  <StyledInput
-                    type="text"
-                    placeholder="Enter OTP"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                  />
-                  <StyledButton onClick={verifyOTP}>Verify OTP</StyledButton>
-                </>
-              )}
-            </div>
-          )}
-
-          {authMethod === 'passkey' && (
-            <div className="passkey-auth">
-              <h2>Passkey Authentication</h2>
-              <StyledButton onClick={handlePasskeyAuth}>Authenticate with Passkey</StyledButton>
-            </div>
-          )}
-
-          {authError && <ErrorMessage>{authError}</ErrorMessage>}
-          {passkeySuccess && <SuccessMessage>Passkey authentication successful!</SuccessMessage>}
+            {authMethod === 'authenticator' && (
+                <div className="authenticator-auth">
+                    <h2>Authenticator App</h2>
+                    <StyledInput type="text" placeholder="Enter OTP" value={otp} onChange={(e)=>setOTP(e.target.value)}/>
+                    <StyledButton onClick={verifyAutheticatorOTP}>Submit</StyledButton>
+                </div>
+            )}
+            {authMethod === 'passkey' && (
+                <div className="passkey-auth">
+                    <h2>Passkey Authentication</h2>
+                    <StyledButton onClick={verifyPasskey}>Verify with Passkey</StyledButton>
+                </div>
+            )}
         </GlassCard>
       </div>
     </Container>
@@ -138,14 +100,5 @@ const StyledInput = styled.input`
   font-size: 16px;
 `;
 
-const ErrorMessage = styled.p`
-  color: red;
-  margin-top: 10px;
-`;
-
-const SuccessMessage = styled.p`
-  color: green;
-  margin-top: 10px;
-`;
 
 export default Login2FA;
