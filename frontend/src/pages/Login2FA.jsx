@@ -3,17 +3,37 @@ import styled from 'styled-components';
 import GlassCard from '../components/GlassCard';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+const SimpleWebAuthnBrowser = require('@simplewebauthn/browser');
 const Login2FA = () => {
   const Navigate = useNavigate();
     const [authMethod, setAuthMethod] = useState(''); // Track chosen authentication method
     const [otp, setOTP] = useState('');
 
-    const selectAuthMethod = (method) => {
-        setAuthMethod(method);
-    }
     const verifyPasskey = async () => {
-        console.log("Verifying passkey...");
-        // Mocked for demonstration, replace with actual API call
+        const username = await localStorage.getItem('username');
+        let response = await axios.post('http://localhost:4999/login-challenge', {
+            username
+        });
+        console.log(response);
+        
+        const loginChallenge = response.data;
+        const {options} = loginChallenge;
+
+        const authenticationResponse = await SimpleWebAuthnBrowser.startAuthentication(options);
+        console.log(authenticationResponse);
+        
+        const verifyResponse = await axios.post('http://localhost:4999/login-verify', {
+            username,
+            cred: authenticationResponse
+        });
+        console.log(verifyResponse);
+        
+        if(verifyResponse.data.success){
+            Navigate('/');
+        }
+        else{
+            alert('Could not verify');
+        }
     }
     const verifyAutheticatorOTP = async () => {
         const username = await localStorage.getItem('username');
@@ -24,6 +44,9 @@ const Login2FA = () => {
         if(response.data.success){
             Navigate('/');
         }
+        else{
+            alert('Could not verify');
+        }
     }
   return (
     <Container>
@@ -31,10 +54,10 @@ const Login2FA = () => {
         <GlassCard>
           <h1>Two Factor Authentication</h1>
           <div className="auth-options">
-            <StyledButton onClick={() => selectAuthMethod('authenticator')}>
+            <StyledButton onClick={() => setAuthMethod('authenticator')}>
             Authenticate with Authenticator App
             </StyledButton>
-            <StyledButton onClick={() => selectAuthMethod('passkey')}>
+            <StyledButton onClick={() => setAuthMethod('passkey')}>
               Authenticate with Passkey
             </StyledButton>
           </div>

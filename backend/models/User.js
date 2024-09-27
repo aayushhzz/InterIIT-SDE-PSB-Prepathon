@@ -25,6 +25,18 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: false
     },
+    challenge: {
+        type: String,
+        required : false
+    },
+    loginchallenge: {
+        type: String,
+        required : false
+    },
+    passkey : {
+        type: Object,
+        required : false
+    }
 });
 
 module.exports = mongoose.model('User', UserSchema);
