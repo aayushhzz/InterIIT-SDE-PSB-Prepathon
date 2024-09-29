@@ -3,16 +3,34 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import GlassCard from '../components/GlassCard';
 import '../App.css';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useAuth0 } from "@auth0/auth0-react";
 
 const LoginPage = () => {
+  const Navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const { loginWithRedirect } = useAuth0();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-
+    if(username === '' || password === ''){
+      alert('Please fill in all fields');
+      return;
+    }
+    const response = await axios.post('http://localhost:4999/login', {
+      username,
+      password
+    });
+    if(response.data.error){
+      alert(response.data.error);
+      return;
+    }
+    else{
+      localStorage.setItem('username', username);
+      Navigate('/login/2fa');
+    }
   };
 
   return (

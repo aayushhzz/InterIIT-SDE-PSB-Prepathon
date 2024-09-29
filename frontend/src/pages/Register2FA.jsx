@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import GlassCard from "../components/GlassCard";
 import axios from "axios";
+const SimpleWebAuthnBrowser = require('@simplewebauthn/browser');
 
 const Register2FA = () => {
     const Navigate = useNavigate();
@@ -12,6 +13,7 @@ const Register2FA = () => {
 
   const setUpMethod = async (method) => {
     if (method === "authenticator") {
+      console.log("Setting up Authenticator...");
       let username = await localStorage.getItem("username");
       const response = await axios.post("http://localhost:4999/getQR", {
         username: username ,
@@ -19,7 +21,6 @@ const Register2FA = () => {
       setImage(response.data.image);
     }
     if (method === "passkey") {
-      // Mocked for demonstration, replace with actual API call
       console.log("Setting up Passkey...");
     }
   };
@@ -36,11 +37,33 @@ const Register2FA = () => {
     if (response.data.success) {
       Navigate("/login");
     }
+    else{
+        alert('Could not verify');
+    }
   };
   const setupPasskey = async () => {
-    console.log("Setting up passkey...");
-    // Mocked for demonstration, replace with actual API call
+    const username = await localStorage.getItem("username");
+    let response = await axios.post("http://localhost:4999/register-challenge", {
+        username: username,
+        });
+    const challengeResult = response.data;
+    const {options} = challengeResult; //server side challenge
+
+    const authenticationResponse = await SimpleWebAuthnBrowser.startRegistration(options);
+
+    response = await axios.post("http://localhost:4999/register-verify", {
+        username: username,
+        cred: authenticationResponse,
+    });
+
+    if(response.data.verified){
+        Navigate('/login');
+    }
+    else{
+        alert('Could not verify');
+    }
   };
+  
   return (
     <Container>
       <div className="auth-container">
