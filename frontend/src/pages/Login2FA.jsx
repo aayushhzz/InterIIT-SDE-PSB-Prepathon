@@ -1,11 +1,32 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import GlassCard from '../components/GlassCard';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useAsyncValue, useNavigate } from 'react-router-dom';
+import { useAuth0 } from "@auth0/auth0-react";
 const SimpleWebAuthnBrowser = require('@simplewebauthn/browser');
+
 const Login2FA = () => {
   const Navigate = useNavigate();
+  const { logout } = useAuth0();
+  const { user, isAuthenticated } = useAuth0();
+  useEffect(async()=>{
+    if(isAuthenticated){
+      console.log(user);
+      //check if regitered
+      const checkregister=await axios.post("http://localhost:4999/check-register",
+        {
+          email:user.email
+        }
+      )
+      console.log(checkregister.data);
+      
+      // check if registered in 2fa
+      //ifregistered both then 2fa
+      
+  }
+  },[])
+ 
     const [authMethod, setAuthMethod] = useState(''); // Track chosen authentication method
     const [otp, setOTP] = useState('');
 
