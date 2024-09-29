@@ -2,10 +2,9 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import GlassCard from '../components/GlassCard';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-const SimpleWebAuthnBrowser = require('@simplewebauthn/browser');
 import { useAsyncValue, useNavigate } from 'react-router-dom';
 import { useAuth0 } from "@auth0/auth0-react";
+const SimpleWebAuthnBrowser = require('@simplewebauthn/browser');
 
 const Login2FA = () => {
   const Navigate = useNavigate();
