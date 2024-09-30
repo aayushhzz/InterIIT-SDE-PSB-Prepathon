@@ -31,9 +31,9 @@ const Login2FA = () => {
     const [otp, setOTP] = useState('');
 
     const verifyPasskey = async () => {
-        const username = await localStorage.getItem('username');
+        const email = await localStorage.getItem('email');
         let response = await axios.post('http://localhost:4999/login-challenge', {
-            username
+            email
         });
         console.log(response);
         
@@ -44,7 +44,7 @@ const Login2FA = () => {
         console.log(authenticationResponse);
         
         const verifyResponse = await axios.post('http://localhost:4999/login-verify', {
-            username,
+            email,
             cred: authenticationResponse
         });
         console.log(verifyResponse);
@@ -57,9 +57,9 @@ const Login2FA = () => {
         }
     }
     const verifyAutheticatorOTP = async () => {
-        const username = await localStorage.getItem('username');
+        const email = await localStorage.getItem('email');
         const response = await axios.post('http://localhost:4999/loginVerifyOTP', {
-            username,
+            email,
             otp
         });
         if(response.data.success){

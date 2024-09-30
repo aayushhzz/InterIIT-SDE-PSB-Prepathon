@@ -10,17 +10,17 @@ import { useAuth0 } from "@auth0/auth0-react";
 const LoginPage = () => {
   const Navigate = useNavigate();
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
+  const [email, setemail] = useState('');
   const { loginWithRedirect } = useAuth0();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if(username === '' || password === ''){
+    if(email === '' || password === ''){
       alert('Please fill in all fields');
       return;
     }
     const response = await axios.post('http://localhost:4999/login', {
-      username,
+      email,
       password
     });
     if(response.data.error){
@@ -28,7 +28,7 @@ const LoginPage = () => {
       return;
     }
     else{
-      localStorage.setItem('username', username);
+      localStorage.setItem('email', email);
       Navigate('/login/2fa');
     }
   };
@@ -38,7 +38,7 @@ const LoginPage = () => {
       <GlassCard>
         <h2>Login</h2>
         <form onSubmit={handleLogin} >
-          <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
+          <input type="text" placeholder="email" value={email} onChange={(e) => setemail(e.target.value)} />
           <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
           <button type="submit">Login</button>
           <button onClick={() => loginWithRedirect()}>Log In , in other ways</button>

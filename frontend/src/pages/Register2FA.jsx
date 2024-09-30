@@ -14,9 +14,9 @@ const Register2FA = () => {
   const setUpMethod = async (method) => {
     if (method === "authenticator") {
       console.log("Setting up Authenticator...");
-      let username = await localStorage.getItem("username");
+      let email = await localStorage.getItem("email");
       const response = await axios.post("http://localhost:4999/getQR", {
-        username: username ,
+        email: email ,
       });
       setImage(response.data.image);
     }
@@ -29,9 +29,9 @@ const Register2FA = () => {
     setUpMethod(method);
   };
   const verifyOTP = async () => {
-    const username = await localStorage.getItem("username");
+    const email = await localStorage.getItem("email");
     const response = await axios.post("http://localhost:4999/registerVerifyOTP", {
-      username,
+      email,
       otp,
     });
     if (response.data.success) {
@@ -42,9 +42,9 @@ const Register2FA = () => {
     }
   };
   const setupPasskey = async () => {
-    const username = await localStorage.getItem("username");
+    const email = await localStorage.getItem("email");
     let response = await axios.post("http://localhost:4999/register-challenge", {
-        username: username,
+        email: email,
         });
     const challengeResult = response.data;
     const {options} = challengeResult; //server side challenge
@@ -52,7 +52,7 @@ const Register2FA = () => {
     const authenticationResponse = await SimpleWebAuthnBrowser.startRegistration(options);
 
     response = await axios.post("http://localhost:4999/register-verify", {
-        username: username,
+        email: email,
         cred: authenticationResponse,
     });
 

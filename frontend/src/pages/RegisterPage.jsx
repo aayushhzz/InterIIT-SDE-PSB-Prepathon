@@ -11,6 +11,8 @@ const RegisterPage = () => {
   const [username, setUsername] = useState('');
 
   const handleRegister = async (e) => {
+    console.log('register');
+    
     e.preventDefault();
     if(!username || !email || !password){
       //toast error
