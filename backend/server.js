@@ -32,7 +32,7 @@ app.listen(process.env.PORT || 4998, () => {
 
 app.post("/register", async (req, res) => {
   const { username, email, password } = req.body;
-  if (await User.findOne({ username: username })) {
+  if (await User.findOne({ email: email })) {
     return res.status(400).json({ error: "User already exists" });
   }
   if (await User.findOne({ email: email })) {
@@ -54,21 +54,23 @@ app.post("/register", async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
-  const { username, password } = req.body;
-  const user = await User.findOne({ username: username });
+  const { email, password } = req.body;
+  // console.log("login");
+  
+  const user = await User.findOne({ email: email });
   if (!user) {
     return res.status(400).json({ error: "User not found" });
   }
   if (user.password !== password) {
     return res.status(400).json({ error: "Invalid password" });
   }
-  return res.json({ username });
+  return res.json({ email });
 });
 
 app.post("/register-challenge", async (req, res) => {
-  const { username } = req.body;
+  const { email } = req.body;
 
-  const user = await User.findOne({ username });
+  const user = await User.findOne({ email: email });
 
   if (!user) return res.status(404).json({ error: "user not found!" });
 
@@ -76,7 +78,7 @@ app.post("/register-challenge", async (req, res) => {
     rpID: "localhost",
     rpName: "My Localhost Machine",
     attestationType: "none",
-    userName: user.username,
+    userName: user.email,
     timeout: 30_000,
   });
   user.challenge = challengePayload.challenge;
@@ -85,7 +87,7 @@ app.post("/register-challenge", async (req, res) => {
 });
 
 app.post("/register-verify", async (req, res) => {
-  const { username, cred } = req.body;
+  const { email, cred } = req.body;
 
   const user = await User.findOne({ username: username });
   if (!user) return res.status(404).json({ error: "user not found!" });
@@ -109,8 +111,8 @@ app.post("/register-verify", async (req, res) => {
 });
 
 app.post("/login-challenge", async (req, res) => {
-  const { username } = req.body;
-  const user = await User.findOne({ username });
+  const { email } = req.body;
+  const user = await User.findOne({ email });
   if (!user) return res.status(404).json({ error: "user not found!" });
 
   const opts = await generateAuthenticationOptions({
@@ -123,8 +125,9 @@ app.post("/login-challenge", async (req, res) => {
 });
 
 app.post("/login-verify", async (req, res) => {
-  const { username, cred } = req.body;
-  const user = await User.findOne({ username });
+  const { email, cred } = req.body;
+  
+  const user = await User.findOne({ email });
   const userPasskey = user.passkey;
   if (!user) return res.status(404).json({ error: "user not found!" });
   const challenge = user.loginchallenge;
@@ -152,13 +155,13 @@ app.post("/login-verify", async (req, res) => {
 
 //authenticator app 2fa
 app.post("/getQR", async (req, res) => {
-  const { username } = req.body;
-  const user = await User.findOne({ username: username });
+  const { email } = req.body;
+  const user = await User.findOne({ email: email });
   if (!user) {
     return res.status(400).json({ error: "User not found" });
   }
   const secret = await speakeasy.generateSecret({
-    name: `${username} Inter-IIT SDE`,
+    name: `${user.username} Inter-IIT SDE`,
   });
   const image = await qrcode.toDataURL(secret.otpauth_url);
   user.tempsecret = secret.ascii;
@@ -167,8 +170,8 @@ app.post("/getQR", async (req, res) => {
 });
 //verify otp at register
 app.post("/registerVerifyOTP", async (req, res) => {
-  const { username, otp } = req.body;
-  const user = await User.findOne({ username });
+  const { email, otp } = req.body;
+  const user = await User.findOne({ email });
   if (!user) {
     return res.status(400).json({ error: "User not found" });
   }
@@ -188,14 +191,21 @@ app.post("/registerVerifyOTP", async (req, res) => {
 });
 //verify otp at login
 app.post("/loginVerifyOTP", async (req, res) => {
-  const { username, otp } = req.body;
-  const user = await User.findOne({ username });
+  const { email, otp } = req.body;
+  console.log("aiskis");
+  
+  try {
+    const user = await User.findOne({ email });
+    
   if (!user) {
     return res.status(400).json({ error: "User not found" });
   }
+  console.log(user);
+  
   if (!user.secret) {
     return res.status(400).json({ error: "Enable 2FA!!" });
   }
+
   const verified = speakeasy.totp.verify({
     secret: user.secret,
     encoding: "ascii",
@@ -207,7 +217,12 @@ app.post("/loginVerifyOTP", async (req, res) => {
     await user.save();
     return res.json({ success: true });
   }
-  return res.status(400).json({ error: "Invalid OTP" });
+  } catch (error) {
+    console.log(error);
+    
+    return res.status(400).json({ error: "Invalid OTP" });
+  }
+  
 });
 app.post("/check-register",async (req,res)=>{
   const {email} = req.body;
